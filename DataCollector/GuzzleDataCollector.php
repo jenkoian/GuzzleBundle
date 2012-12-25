@@ -3,6 +3,8 @@
 namespace Playbloom\Bundle\GuzzleBundle\DataCollector;
 
 use Guzzle\Plugin\History\HistoryPlugin;
+use Guzzle\Http\Message\RequestInterface as GuzzleRequestInterface;
+use Guzzle\Http\Message\Response as GuzzleResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\DataCollector\DataCollector;
@@ -34,38 +36,17 @@ class GuzzleDataCollector extends DataCollector
     public function collect(Request $request, Response $response, \Exception $exception = null)
     {
         foreach($this->profiler as $call) {
-            $error = false;
             $request = $call;
             $response = $request->getResponse();
-
-            $requestContent = null;
-            $responseContent = $response->getBody(true);
-
-            $time = array(
-                'total' => $response->getInfo('total_time'),
-                'connection' => $response->getInfo('connect_time')
-            );
-
-            $this->data['total_time'] += $response->getInfo('total_time');
-
-            if (!isset($this->data['methods'][$request->getMethod()])) {
-                $this->data['methods'][$request->getMethod()] = 0;
-            }
-
-            $this->data['methods'][$request->getMethod()]++;
-
-            if ($response->isError()) {
-                $this->data['error_count']++;
-                $error = true;
-            }
+            $this->collectRequestMethod();
 
             $this->data['calls'][] = array(
                 'request' => $request,
-                'requestContent' => $requestContent,
+                'requestContent' => null,
                 'response' => $response,
-                'responseContent' => $responseContent,
-                'time' => $time,
-                'error' => $error
+                'responseContent' => $response->getBody(true),
+                'time' => $this->collectResponseTime($response),
+                'error' => $this->collectResponseError($response)
             );
         }
     }
@@ -96,5 +77,37 @@ class GuzzleDataCollector extends DataCollector
     public function getName()
     {
         return 'guzzle';
+    }
+
+    protected function collectRequestMethod(GuzzleRequestInterface $request)
+    {
+        if (!isset($this->data['methods'][$request->getMethod()])) {
+            $this->data['methods'][$request->getMethod()] = 0;
+        }
+
+        $this->data['methods'][$request->getMethod()]++;
+
+        return $request->getMethod();
+    }
+
+    protected function collectResponseTime(GuzzleResponse $response)
+    {
+        $this->data['total_time'] += $response->getInfo('total_time');
+
+        return array(
+            'total' => $response->getInfo('total_time'),
+            'connection' => $response->getInfo('connect_time')
+        );
+    }
+
+    protected function collectResponseError(GuzzleResponse $response)
+    {
+        if ($response->isError()) {
+            $this->data['error_count']++;
+
+            return true;
+        }
+
+        return false;
     }
 }
