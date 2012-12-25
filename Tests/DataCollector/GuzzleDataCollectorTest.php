@@ -3,6 +3,7 @@
 namespace Playbloom\Bundle\GuzzleBundle\Tests\DataCollector;
 
 use Playbloom\Bundle\GuzzleBundle\DataCollector\GuzzleDataCollector;
+use Guzzle\Plugin\History\HistoryPlugin;
 
 
 class GuzzleDataCollectorTest extends \PHPUnit_Framework_TestCase
@@ -29,7 +30,7 @@ class GuzzleDataCollectorTest extends \PHPUnit_Framework_TestCase
         $this->assertEquals($guzzleDataCollector->getTotalTime(), 0);
 
         // test a stubbed collector
-        $guzzleDataCollector = new GuzzleDataCollector(new HistoryPluginStub());
+        $guzzleDataCollector = $this->createGuzzleCollector(true);
 
         $request = $this->getMock('Symfony\Component\HttpFoundation\Request');
         $response = $this->getMock('Symfony\Component\HttpFoundation\Response');
@@ -44,25 +45,19 @@ class GuzzleDataCollectorTest extends \PHPUnit_Framework_TestCase
     protected function createGuzzleCollector($stubPlugin = false)
     {
         if ($stubPlugin) {
-            $response = $this->getMock('Guzzle\Http\Message\Response');
+            $response = $this->getMock('Guzzle\Http\Message\Response', array(), array(200));
             $response->expects($this->any())
                 ->method('getInfo')
-                ->with($this->equalTo('total_time'))
                 ->will($this->returnValue(200));
-
-            $response->expects($this->any())
-                ->method('getInfo')
-                ->with($this->equalTo('connect_time'))
-                ->will($this->returnValue(100));
 
             $response->expects($this->any())
                 ->method('getBody')
                 ->with($this->equalTo(true))
-                ->will($this->equalTo(null));
+                ->will($this->returnValue(''));
 
             $response->expects($this->any())
                 ->method('isError')
-                ->will($this->equalTo(false));
+                ->will($this->returnValue(false));
 
 
             $request = $this->getMock('Guzzle\Http\Message\RequestInterface');
@@ -74,16 +69,16 @@ class GuzzleDataCollectorTest extends \PHPUnit_Framework_TestCase
                 ->method('getMethod')
                 ->will($this->returnValue('get'));
 
-            $historyPlugin = new HistoryPluginStub(array($request))
+            $historyPlugin = new HistoryPluginStub(array($request));
         } else {
-            $historyPlugin = $this->getMock('Guzzle\Plugin\History\HistoryPlugin');
+            $historyPlugin = new HistoryPluginStub(array());
         }
 
         return new GuzzleDataCollector($historyPlugin);
     }
 }
 
-class HistoryPluginStub extends HistoryPlugin
+class HistoryPluginStub extends HistoryPlugin implements \IteratorAggregate
 {
     private $stubJournal = array();
 

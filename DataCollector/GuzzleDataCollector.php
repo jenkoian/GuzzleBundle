@@ -36,17 +36,17 @@ class GuzzleDataCollector extends DataCollector
     public function collect(Request $request, Response $response, \Exception $exception = null)
     {
         foreach($this->profiler as $call) {
-            $request = $call;
-            $response = $request->getResponse();
-            $this->collectRequestMethod();
+            $httpRequest = $call;
+            $httpResponse = $httpRequest->getResponse();
+            $this->collectRequestMethod($httpRequest);
 
             $this->data['calls'][] = array(
-                'request' => $request,
+                'request' => $httpRequest,
                 'requestContent' => null,
-                'response' => $response,
-                'responseContent' => $response->getBody(true),
-                'time' => $this->collectResponseTime($response),
-                'error' => $this->collectResponseError($response)
+                'response' => $httpResponse,
+                'responseContent' => $httpResponse->getBody(true),
+                'time' => $this->collectResponseTime($httpResponse),
+                'error' => $this->collectResponseError($httpResponse)
             );
         }
     }
